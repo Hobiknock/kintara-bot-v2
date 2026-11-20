@@ -115,7 +115,9 @@ const hz = {
 };
 function humanizerState() {
   // nextBreak/nextSleep = kapan pause berikutnya; pausedUntil = null kalau tidak sedang pause
-  return { nextBreak: Date.now() + hz.breakEvery(), nextSleep: Date.now() + hz.sleepEvery(), pausedUntil: null, resumeCmd: null, wasSleep: false };
+  // DAILY BUDGET (anti-flag): total jam AKTIF per hari dibatasi acak (default 4-7 jam), sisanya tidur sampai besok
+  const dailyH = hrnd(Number(process.env.KINTARA_DAILY_MAX_H_A || 4), Number(process.env.KINTARA_DAILY_MAX_H_B || 7));
+  return { nextBreak: Date.now() + hz.breakEvery(), nextSleep: Date.now() + hz.sleepEvery(), pausedUntil: null, resumeCmd: null, wasSleep: false, activeMs: 0, dailyMaxMs: dailyH * 3600000, dayStarted: Date.now() };
 }
 // dipanggil dari loop polling: kalau waktunya break/sleep dan ada aktivitas → stop bersih + tunggu + auto-respawn
 function humanizerTick(state) {
@@ -135,7 +137,18 @@ function humanizerTick(state) {
     if (state.wasSleep) { state.nextSleep = Date.now() + hz.sleepEvery(); state.wasSleep = false; }
     return;
   }
-  // 2) belum waktunya pause
+  // 2) DAILY BUDGET: kumpulkan jam aktif; habis → tidur sampai besok (jam mulai acak biar natural)
+  if (!state.pausedUntil && current) state.activeMs = (state.activeMs || 0) + 30000;
+  if (!state.pausedUntil && (state.activeMs || 0) >= (state.dailyMaxMs || Infinity)) {
+    const nowHour = new Date().getHours();
+    const sleepMs = Math.max(6 * 3600000, (24 - nowHour + hrnd(6, 10)) * 3600000 % (24 * 3600000));
+    state.pausedUntil = Date.now() + sleepMs;
+    state.wasSleep = true; state.resumeCmd = 'auto';
+    log(`🌙 daily budget habis (${Math.round(state.activeMs / 360000) / 10} jam aktif) — tidur ${Math.round(sleepMs / 3600000)} jam, respawn besok`);
+    tg.send(`🌙 Daily budget habis — bot tidur ${Math.round(sleepMs / 3600000)} jam (pola main manusia). Respawn otomatis besok.`).catch(() => {});
+    return;
+  }
+  // 2b) belum waktunya pause
   const long = now >= state.nextSleep;
   if (!long && now < state.nextBreak) return;
   // 3) waktunya pause — hanya kalau ada aktivitas jalan
