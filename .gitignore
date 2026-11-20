@@ -1,0 +1,13 @@
+# Kredensial — JANGAN commit
+.env
+*.env
+!.env.example
+accounts.json
+
+# Runtime
+node_modules/
+recon/
+logs/
+*.log
+errors.json
+nohup.out

@@ -1,0 +1,13 @@
+[Unit]
+Description=Kintara Telegram Controller
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/kintara
+ExecStart=/usr/bin/node tools/telegram-ctl.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
