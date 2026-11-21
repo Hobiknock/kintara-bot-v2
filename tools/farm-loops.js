@@ -66,7 +66,7 @@ async function connectPresence(cli, onEvent, attempt = 0, forceShard = null) {
     const base = String(wsBase || '').replace(/^wss:\/\//, '');
     // queue -> connectToken
     const connectToken = await new Promise((resolve, reject) => {
-      const ws = new WebSocket(`wss://${base}/ws/queue/${shardStr}`, { headers: { Cookie: cli.cookie, Origin: 'https://' + base } });
+      const ws = new WebSocket(`wss://${base}/ws/queue/${shardStr}`, { headers: { Cookie: cli.cookie, Origin: 'https://kintara.com' } });
       const to = setTimeout(() => { try { ws.close(); } catch {} reject(new Error('queue timeout')); }, 30000);
       ws.on('message', (buf) => { let d; try { d = JSON.parse(buf.toString()); } catch { return; }
         if (d.t === 'queue_ready') { clearTimeout(to); const t = d.connectToken || ''; try { ws.close(); } catch {} resolve(t); } });
