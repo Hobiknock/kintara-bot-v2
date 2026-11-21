@@ -94,8 +94,10 @@ async function connectPresence(cli, onEvent, attempt = 0, forceShard = null) {
     // Tahan-502: Cloudflare kadang down ±10-15 mnt → retry jangan cuma 3x.
     // 6 percobaan dgn backoff 15/30/45/60/75 dtk (total ~3,7 mnt) per phase start;
     // kalau masih gagal, FATAL fase → AUTO lanjut fase berikutnya (budget retry baru).
-    if (attempt < 5) {
-      const wait = 15000 * (attempt + 1);
+    // anti-probe: max 2 retry dgn backoff acak 20-40s. Retries beruntun (403/502/40x)
+    // keliatan kayak scanning ke server — itu pola yang bikin akun di-flag.
+    if (attempt < 2) {
+      const wait = 20000 + Math.floor(Math.random() * 20000);
       onEvent && onEvent(`⚠️ connect gagal (${String(e.message).slice(0, 40)}) — retry ${attempt + 1} dalam ${Math.round(wait / 1000)} dtk...`);
       await sleep(wait);
       return connectPresence(cli, onEvent, attempt + 1, forceShard);
