@@ -231,6 +231,8 @@ const AUTO_FNS = {
   fish: (ctx) => loops.runFish(ctx),
 };
 const AUTO_CHECK_MS = 30 * 1000; // cek target tiap 30 dtk
+// FREE MODE: akun gratis di-capped — AUTO berhenti otomatis saat avg level mencapai batas (default 10)
+const FREE_AVG_CAP = Number(process.env.KINTARA_FREE_AVG_CAP || 10);
 let auto = null; // { idx, cur, curWhy }
 
 // claim quest yg sudah selesai (ala daily-quest.js repo). return daftar yg di-claim.
@@ -258,6 +260,19 @@ async function claimReadyQuests(cli, onMsg) {
 function startAuto() {
   if (auto) return `🔄 AUTO sudah jalan (${auto.cur || '?'}). /stop buat berhenti.`;
   if (current) return `⛔ Sedang jalan: ${current.name}. Kirim /stop dulu, baru /auto.`;
+  // FREE MODE CAP: jangan start kalau avg sudah mentok
+  (async () => {
+    try {
+      const c = await getClient();
+      const pid = c.player?.id || (await c.me()).player?.id;
+      const st = await c.playerStats(pid).catch(() => ({}));
+      const avg = Number.isFinite(Number(st.avg)) ? Number(st.avg) : averageLevelFloor(st.skillXp || {});
+      if (avg >= FREE_AVG_CAP && !auto) {
+        await tg.send(`🎓 <b>FREE CAP</b> — avg lvl kamu <b>${avg}</b>, batas free ${FREE_AVG_CAP}. AUTO gak dimulai.\n<i>Hold 1.000 $KINS 24 jam buat buka cap.</i>`).catch(() => {});
+        current = null;
+      }
+    } catch {}
+  })();
   auto = { idx: 0, cur: null, curWhy: '' };
   (async () => {
     while (auto) {
@@ -272,12 +287,32 @@ function startAuto() {
       // juga timer max fase → biar AUTO gak nyangkut di fase macet
       const phaseStart = Date.now();
       const PHASE_MAX_MS = Number(process.env.KINTARA_PHASE_MAX_MIN || 10) * 60000;
+      let _avgCheckedAt = 0, _avgCache = null;
       const timer = setInterval(() => {
         try {
           if (tgt.done(ctx.counters)) ctx._stop = true;
           if (Date.now() - phaseStart > PHASE_MAX_MS) {
             log(`[auto] fase ${name} lewat ${Math.round(PHASE_MAX_MS / 60000)} mnt tanpa target — skip`);
             ctx._stop = true;
+          }
+          // FREE MODE CAP: cek avg level tiap 5 mnt (murah — cache). Cap tercapai → stop AUTO permanen.
+          if (Date.now() - _avgCheckedAt > 5 * 60000) {
+            _avgCheckedAt = Date.now();
+            (async () => {
+              try {
+                const c = await getClient();
+                const pid = c.player?.id || (await c.me()).player?.id;
+                const st = await c.playerStats(pid).catch(() => ({}));
+                const avg = Number.isFinite(Number(st.avg)) ? Number(st.avg) : averageLevelFloor(st.skillXp || {});
+                _avgCache = avg;
+                if (auto && avg >= FREE_AVG_CAP) {
+                  log(`[auto] FREE CAP: avg ${avg} >= ${FREE_AVG_CAP} — AUTO berhenti`);
+                  if (current) current.ctx._stop = true;
+                  const stoppedAuto = auto; auto = null;
+                  await tg.send(`🎓 <b>FREE CAP tercapai</b> — avg lvl <b>${avg}</b> (batas ${FREE_AVG_CAP}).\nAUTO dihentikan — akun gratis di-capped di sini.\n<i>Kalau nanti pegang 1.000 $KINS, cap terbuka — tinggal /auto lagi.</i>`).catch(() => {});
+                }
+              } catch {}
+            })();
           }
         } catch {}
       }, AUTO_CHECK_MS);
