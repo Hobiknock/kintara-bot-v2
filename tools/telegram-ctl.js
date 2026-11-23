@@ -217,7 +217,8 @@ function stopActivity() {
 // wood ≥1000 → pindah; stone ATAU coal ≥2000 (yg duluan) → pindah;
 // combat ≥20 kill → pindah; fish ≥30 cooked → pindah; ulang dari awal.
 // /boss JANGAN dimasukkan (butuh lv 20).
-const AUTO_ORDER = ['rock', 'wood', 'combat', 'fish'];
+// combat DILUAR rotasi AUTO (risiko mati wild = hilang alat; command /combat manual tetap ada)
+const AUTO_ORDER = ['rock', 'wood', 'fish'];
 const AUTO_TARGET = {
   rock: { label: 'stone/coal 2000', done: (c, r) => (c.stone || 0) >= 2000 || (c.coal || 0) >= 2000, progress: (c) => `🪨 ${c.stone || 0}/2000 ⬛ ${c.coal || 0}/2000` },
   wood: { label: 'wood 1000', done: (c, r) => (c.wood || 0) >= 1000, progress: (c) => `🪵 ${c.wood || 0}/1000` },
