@@ -91,8 +91,8 @@ async function getClient() {
 // ---- activity runner ----
 // rows counter sesi buat panel — cuma yang > 0 biar ringkas
 function sumRows(name, counters) {
-  const ICONS = { kill: '⚔️', felled: '🪓', stone: '🪨', coal: '⚫', metal: '🔩', wood: '🪵', cast: '🎣', fish: '🐟', hits: '🗡️', cooked: '🍳' };
-  const LABEL = { kill: 'Kill', felled: 'Node tumbang', stone: 'Stone', coal: 'Coal', metal: 'Metal', wood: 'Wood', cast: 'Cast', fish: 'Ikan', hits: 'Hit', cooked: 'Cooked' };
+  const ICONS = { kill: '⚔️', felled: '🪓', stone: '🪨', coal: '⚫', metal: '🔩', wood: '🪵', cast: '🎣', fish: '🐟', hits: '🗡️', cooked: '🍳', chickens: '🐔' };
+  const LABEL = { kill: 'Kill', felled: 'Node tumbang', stone: 'Stone', coal: 'Coal', metal: 'Metal', wood: 'Wood', cast: 'Cast', fish: 'Ikan', hits: 'Hit', cooked: 'Cooked', chickens: 'Ayam' };
   const rows = [];
   for (const [k, n] of Object.entries(counters || {})) {
     if (n > 0 && LABEL[k]) rows.push([`${ICONS[k]} ${LABEL[k]}`, String(n)]);
@@ -760,6 +760,7 @@ const commands = {
   mining: () => startActivity('mining', async (ctx) => {
     // loop mining: runRock selesai (area habis/respawn) → jeda acak 20-60 dtk → ulang, sampai /stop
     const totals = { felled: 0, stone: 0, coal: 0, metal: 0, rounds: 0 };
+    totals.chickens = 0;
     while (!ctx._stop) {
       try {
         const r = await loops.runRock(ctx);
@@ -771,6 +772,18 @@ const commands = {
         }
       } catch (e) { ctx.onEvent && ctx.onEvent(`⚠️ round mining err: ${String(e.message).slice(0, 50)}`); }
       if (ctx._stop) break;
+      // tiap 3 round rock → ronde ayam (5-8 ekor, jumlah acak biar natural)
+      if (totals.rounds % 3 === 2) {
+        try {
+          const want = 5 + Math.floor(Math.random() * 4);
+          const p = await loops.connectPresence(ctx.cli || (await getClient()), ctx.onEvent);
+          const got = await loops.huntChickens(p, ctx.cli || (await getClient()), ctx.onEvent, want, 300000, () => !!ctx._stop);
+          totals.chickens += got;
+          ctx.onEvent && ctx.onEvent(`🐔 ronde ayam: +${got} (total ${totals.chickens})`);
+          try { p.close(); } catch {}
+        } catch (e) { ctx.onEvent && ctx.onEvent(`⚠️ chicken err: ${String(e.message).slice(0, 50)}`); }
+        if (ctx._stop) break;
+      }
       const pause = 20000 + Math.floor(Math.random() * 40000);
       ctx.onEvent && ctx.onEvent(`⛏️ round ${totals.rounds + 1} selesai (stone ${totals.stone} coal ${totals.coal}) — jeda ${Math.round(pause / 1000)}s lalu lanjut`);
       await new Promise((r2) => setTimeout(r2, pause));

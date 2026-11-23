@@ -1870,4 +1870,4 @@ async function runFish(ctx) {
 }
 
 // ============ EXPORT ============
-module.exports = { runRock, runWood, runCombat, runSpinner, runTutorial, runFish, runCook, connectPresence, persistLoot, pickNodeFixed };
+module.exports = { runRock, runWood, runCombat, runSpinner, runTutorial, runFish, runCook, connectPresence, persistLoot, pickNodeFixed, huntChickens };
