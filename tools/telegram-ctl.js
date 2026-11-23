@@ -747,7 +747,7 @@ async function hSetKey(pk) {
 function hHelp() {
   return `🤖 <b>Kintara Bot — Commands</b>\n` +
     `/status — bot status &amp; inventory\n/skills — skill levels, XP, avg level\n/balance — gold/$KINS/resources\n/market — marketplace prices\n/server — live server queues\n/version — current game version\n/quest — daily quests (auto-claim)\n/spinner — 🎡 free spin wheel (12h)\n/diag — auth, shard, process\n\n` +
-    `/rock — mining stone+coal ⛏ (di POND — node rapat, rate 3x world)\n/stone — mining khusus stone 🪨\n/coal — mining khusus coal ⬛\n/wood — woodcutting 🪓\n/fish — fishing 🎣 + auto-masak jadi cooked 🍳 (1 flow)\n/cook (alias /cooking) — masak semua ikan mentah doang 🍳\n/combat — hunt zombie ⚔️ (/combat boss = dragon 🐉)\n/auto — automatic orchestrator (smart switching) 🧠\n/stop — stop all\n/outfit — 🎲 pasang outfit random baru (char gak polos)\n/outfit now — lihat outfit yang lagi dipakai\n/tutorial — 📖 auto tutorial akun baru (28 step)\n/setkey atau /pk — ganti private key wallet 🔑\n/help — command list\n\n` +
+    `/mining — ⛏️ MODE TAMBANG TERUS: mining stone+coal nonstop sampai /stop\n/rock — mining stone+coal ⛏ (di POND — node rapat, rate 3x world)\n/stone — mining khusus stone 🪨\n/coal — mining khusus coal ⬛\n/wood — woodcutting 🪓\n/fish — fishing 🎣 + auto-masak jadi cooked 🍳 (1 flow)\n/cook (alias /cooking) — masak semua ikan mentah doang 🍳\n/combat — hunt zombie ⚔️ (/combat boss = dragon 🐉)\n/auto — automatic orchestrator (smart switching) 🧠\n/stop — stop all\n/outfit — 🎲 pasang outfit random baru (char gak polos)\n/outfit now — lihat outfit yang lagi dipakai\n/tutorial — 📖 auto tutorial akun baru (28 step)\n/setkey atau /pk — ganti private key wallet 🔑\n/help — command list\n\n` +
     `<i>1 akun = 1 aktivitas (aman dari anti-cheat). Combat pakai bank-first + auto-survival.</i>`;
 }
 
@@ -757,6 +757,27 @@ const commands = {
   rock: () => startActivity('rock', (ctx) => loops.runRock(ctx)),
   stone: () => startActivity('stone', (ctx) => loops.runRock(ctx), { mode: 'stone' }),
   coal: () => startActivity('coal', (ctx) => loops.runRock(ctx), { mode: 'coal' }),
+  mining: () => startActivity('mining', async (ctx) => {
+    // loop mining: runRock selesai (area habis/respawn) → jeda acak 20-60 dtk → ulang, sampai /stop
+    const totals = { felled: 0, stone: 0, coal: 0, metal: 0, rounds: 0 };
+    while (!ctx._stop) {
+      try {
+        const r = await loops.runRock(ctx);
+        if (r) {
+          totals.felled += r.felled || 0;
+          totals.stone += r.stone || 0;
+          totals.coal += r.coal || 0;
+          totals.metal += r.metal || 0;
+        }
+      } catch (e) { ctx.onEvent && ctx.onEvent(`⚠️ round mining err: ${String(e.message).slice(0, 50)}`); }
+      if (ctx._stop) break;
+      const pause = 20000 + Math.floor(Math.random() * 40000);
+      ctx.onEvent && ctx.onEvent(`⛏️ round ${totals.rounds + 1} selesai (stone ${totals.stone} coal ${totals.coal}) — jeda ${Math.round(pause / 1000)}s lalu lanjut`);
+      await new Promise((r2) => setTimeout(r2, pause));
+      totals.rounds++;
+    }
+    return totals;
+  }), // MODE MINING: tambang terus stone+coal sampai /stop
   cook: () => startActivity('cook', (ctx) => loops.runCook(ctx)), // masak semua ikan mentah doang
   cooking: () => startActivity('cook', (ctx) => loops.runCook(ctx)), // alias /cooking
   wood: () => startActivity('wood', (ctx) => loops.runWood(ctx)),
@@ -855,6 +876,7 @@ const commands = {
   // menu command native (muncul pas tekan "/" di Telegram)
   const tgMenu = [
     { command: 'auto', description: '🧠 Smart auto: cycle semua aktivitas' },
+    { command: 'mining', description: '⛏️ Mining nonstop stone+coal' },
     { command: 'rock', description: '⛏️ Mining stone+coal (POND)' },
     { command: 'stone', description: '🪨 Mining khusus stone' },
     { command: 'coal', description: '⬛ Mining khusus coal' },
