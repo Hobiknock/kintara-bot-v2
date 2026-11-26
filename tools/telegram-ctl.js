@@ -140,8 +140,8 @@ function humanizerTick(state) {
   // 2) DAILY BUDGET: kumpulkan jam aktif; habis → tidur sampai besok (jam mulai acak biar natural)
   if (!state.pausedUntil && current) state.activeMs = (state.activeMs || 0) + 30000;
   if (!state.pausedUntil && (state.activeMs || 0) >= (state.dailyMaxMs || Infinity)) {
-    const nowHour = new Date().getHours();
-    const sleepMs = Math.max(6 * 3600000, (24 - nowHour + hrnd(6, 10)) * 3600000 % (24 * 3600000));
+    // tidur kayak manusia: 8-13 jam (bukan sampai besok pagi — budget abis siang = tidur 20+ jam wkwk)
+    const sleepMs = hrnd(8, 13) * 3600000;
     state.pausedUntil = Date.now() + sleepMs;
     state.wasSleep = true; state.resumeCmd = 'auto';
     log(`🌙 daily budget habis (${Math.round(state.activeMs / 360000) / 10} jam aktif) — tidur ${Math.round(sleepMs / 3600000)} jam, respawn besok`);

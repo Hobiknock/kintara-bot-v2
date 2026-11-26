@@ -220,7 +220,8 @@ function tileOff(region) {
 // METODE REPO HOBIKNOCK: spread shard per wallet (KINTARA_FORCE_SHARD). Upgrade: scan lintas zona —
 // Kintara = 3 zona (asia/eu/us) dgn base WS beda (as./eu./us.kintara.com), shard s1-s3 per zona.
 // Dulu scan cuma s1-s6 di base asia → s4-s6 selalu 404 dan eu/us tidak pernah dicoba.
-const ZONE_BASES = ['wss://as.kintara.com', 'wss://eu.kintara.com', 'wss://us.kintara.com'];
+// PATOKAN USER: scan/shard-hop ASIA SAJA (eu/us = buang waktu + jejak probing antar-region)
+const ZONE_BASES = ['wss://as.kintara.com'];
 async function scanTargets(cli) {
   // KINTARA_SERVER_IDS dipercayai user: scan HANYA server itu (dari /api/servers — dapat base + shard benar)
   const ids = String(process.env.KINTARA_SERVER_IDS || '').split(',').map((x) => Number(x.trim())).filter(Boolean);
